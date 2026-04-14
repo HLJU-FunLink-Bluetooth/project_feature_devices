@@ -143,7 +143,6 @@ fun DevicesPage(
         isRefreshing -> "停止扫描"
         else -> "开始扫描"
     }
-    val switchRoleActionText = if (isHost) "Host" else "Client"
 
     PageScaffold(
         title = "趣连蓝牙",
@@ -281,16 +280,9 @@ fun DevicesPage(
                 ) {
                     Icon(
                         imageVector = MiuixIcons.Replace,
-                        contentDescription = switchRoleActionText,
+                        contentDescription = "Role Switch",
                         tint = Color.White,
                         modifier = Modifier.size(Spacing.IconMedium)
-                    )
-                    Box(modifier = Modifier.width(Spacing.PageBase10))
-                    Text(
-                        text = switchRoleActionText,
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
                     )
                 }
             }
