@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -57,6 +58,7 @@ import com.hlju.funlinkbluetooth.core.model.NearbyEndpointInfo
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -65,6 +67,7 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Replace
 import top.yukonga.miuix.kmp.icon.extended.SearchDevice
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -140,119 +143,154 @@ fun DevicesPage(
         isRefreshing -> "停止扫描"
         else -> "开始扫描"
     }
+    val switchRoleActionText = if (isHost) "Host" else "Client"
 
     PageScaffold(
         title = "趣连蓝牙",
         scrollBehavior = scrollBehavior,
     ) { innerPadding, contentModifier ->
-        LazyColumn(
-            modifier = contentModifier
-                .fillMaxHeight()
-                .scrollEndHaptic()
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .padding(horizontal = pageHorizontalPadding),
-            contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding() + Spacing.PageSectionGap,
-                bottom = innerPadding.calculateBottomPadding() + bottomInset + Spacing.PageSectionGap
-            ),
-            verticalArrangement = Arrangement.spacedBy(Spacing.PageSectionGap),
-            overscrollEffect = null
-        ) {
-            item {
-                ConnectionHeroCard(
-                    isHost = isHost,
-                    status = state.status,
-                    summary = statusSummary(
-                        status = state.status,
+        val fabBottomPadding = innerPadding.calculateBottomPadding() + bottomInset + Spacing.FloatingInset
+        val fabEndPadding = pageHorizontalPadding + Spacing.FloatingInset
+        val fabClearance = Spacing.IconExtraLarge + Spacing.ExtraExtraLarge + Spacing.PageSectionGap + Spacing.FloatingInset
+
+        Box(modifier = contentModifier) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .scrollEndHaptic()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .padding(horizontal = pageHorizontalPadding),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding() + Spacing.PageSectionGap,
+                    bottom = innerPadding.calculateBottomPadding() + bottomInset + Spacing.PageSectionGap + fabClearance
+                ),
+                verticalArrangement = Arrangement.spacedBy(Spacing.PageSectionGap),
+                overscrollEffect = null
+            ) {
+                item {
+                    ConnectionHeroCard(
                         isHost = isHost,
-                        isAdvert = isAdvertising,
-                        roomName = controller.roomNameInput,
-                        connectedRoomName = connectedRoomName
-                    ),
-                    primaryActionText = primaryActionText,
-                    connectedCount = connectedList.size,
-                    discoveredCount = discoveredCount,
-                    pendingCount = pendingCount,
-                    bestLinkQuality = bestLinkQuality,
-                    lastError = state.lastError,
-                    identifierValue = if (isHost) controller.roomNameInput else controller.clientNameInput,
-                    statusAccent = statusAccent,
-                    onIdentifierChange = {
-                        if (isHost) controller.updateRoomName(it) else controller.updateClientName(it)
-                    },
-                    onPrimaryAction = {
-                        if (isHost) {
-                            val now = SystemClock.elapsedRealtime()
-                            if (now - lastHostToggleAtMs < hostToggleDebounceMs) return@ConnectionHeroCard
-                            lastHostToggleAtMs = now
-                            if (isAdvertising) {
-                                controller.stopHostBroadcast()
+                        status = state.status,
+                        summary = statusSummary(
+                            status = state.status,
+                            isHost = isHost,
+                            isAdvert = isAdvertising,
+                            roomName = controller.roomNameInput,
+                            connectedRoomName = connectedRoomName
+                        ),
+                        primaryActionText = primaryActionText,
+                        connectedCount = connectedList.size,
+                        discoveredCount = discoveredCount,
+                        pendingCount = pendingCount,
+                        bestLinkQuality = bestLinkQuality,
+                        lastError = state.lastError,
+                        identifierValue = if (isHost) controller.roomNameInput else controller.clientNameInput,
+                        statusAccent = statusAccent,
+                        onIdentifierChange = {
+                            if (isHost) controller.updateRoomName(it) else controller.updateClientName(it)
+                        },
+                        onPrimaryAction = {
+                            if (isHost) {
+                                val now = SystemClock.elapsedRealtime()
+                                if (now - lastHostToggleAtMs < hostToggleDebounceMs) return@ConnectionHeroCard
+                                lastHostToggleAtMs = now
+                                if (isAdvertising) {
+                                    controller.stopHostBroadcast()
+                                } else {
+                                    controller.startHostBroadcast()
+                                    if (controller.pendingStartHost) permissionLauncher.launch(requiredPermissions)
+                                }
                             } else {
-                                controller.startHostBroadcast()
-                                if (controller.pendingStartHost) permissionLauncher.launch(requiredPermissions)
+                                if (isRefreshing) {
+                                    controller.stopClientScan()
+                                } else {
+                                    controller.startClientScan()
+                                    if (controller.pendingStartScan) permissionLauncher.launch(requiredPermissions)
+                                }
                             }
-                        } else {
-                            if (isRefreshing) {
-                                controller.stopClientScan()
-                            } else {
-                                controller.startClientScan()
-                                if (controller.pendingStartScan) permissionLauncher.launch(requiredPermissions)
-                            }
-                        }
-                    },
-                    onRoleSwitch = {
-                        val target = if (isHost) ConnectionRole.CLIENT else ConnectionRole.HOST
-                        controller.requestRoleSwitch(target)
-                    }
-                )
-            }
-
-            item {
-                MetricsRow(
-                    isHost = isHost,
-                    connectedCount = connectedList.size,
-                    discoveredCount = discoveredCount,
-                    pendingCount = pendingCount,
-                    connectedRoomName = connectedRoomName,
-                    qualityAccent = qualityAccent,
-                    bestLinkQuality = bestLinkQuality
-                )
-            }
-
-            item {
-                if (isHost) {
-                    SectionTitle(
-                        title = "已连接设备",
-                        summary = if (connectedList.isEmpty()) {
-                            "开始广播后，等待其他设备加入你的房间。"
-                        } else {
-                            "已建立连接的设备会在这里持续更新链路质量。"
-                        }
-                    )
-                } else {
-                    SectionTitle(
-                        title = "附近房间",
-                        summary = if (isRefreshing) {
-                            "正在搜索附近可加入的房间。"
-                        } else {
-                            "开始扫描后，可从这里发起连接。"
                         }
                     )
                 }
+
+                item {
+                    MetricsRow(
+                        isHost = isHost,
+                        connectedCount = connectedList.size,
+                        discoveredCount = discoveredCount,
+                        pendingCount = pendingCount,
+                        connectedRoomName = connectedRoomName,
+                        qualityAccent = qualityAccent,
+                        bestLinkQuality = bestLinkQuality
+                    )
+                }
+
+                item {
+                    if (isHost) {
+                        SectionTitle(
+                            title = "已连接设备",
+                            summary = if (connectedList.isEmpty()) {
+                                "开始广播后，等待其他设备加入你的房间。"
+                            } else {
+                                "已建立连接的设备会在这里持续更新链路质量。"
+                            }
+                        )
+                    } else {
+                        SectionTitle(
+                            title = "附近房间",
+                            summary = if (isRefreshing) {
+                                "正在搜索附近可加入的房间。"
+                            } else {
+                                "开始扫描后，可从这里发起连接。"
+                            }
+                        )
+                    }
+                }
+
+                item {
+                    if (isHost) {
+                        ConnectedEndpointsCard(
+                            connectedList = connectedList,
+                            endpointBandwidth = state.endpointBandwidth
+                        )
+                    } else {
+                        DiscoveredEndpointsCard(
+                            discoveredList = discoveredList,
+                            isRefreshing = isRefreshing,
+                            onConnect = controller::requestConnectionToEndpoint
+                        )
+                    }
+                }
             }
 
-            item {
-                if (isHost) {
-                    ConnectedEndpointsCard(
-                        connectedList = connectedList,
-                        endpointBandwidth = state.endpointBandwidth
+            FloatingActionButton(
+                onClick = {
+                    val target = if (isHost) ConnectionRole.CLIENT else ConnectionRole.HOST
+                    controller.requestRoleSwitch(target)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = fabEndPadding, bottom = fabBottomPadding),
+                shape = Corners.PageShape
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = Spacing.ExtraLarge),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = MiuixIcons.Replace,
+                        contentDescription = switchRoleActionText,
+                        tint = Color.White,
+                        modifier = Modifier.size(Spacing.IconMedium)
                     )
-                } else {
-                    DiscoveredEndpointsCard(
-                        discoveredList = discoveredList,
-                        isRefreshing = isRefreshing,
-                        onConnect = controller::requestConnectionToEndpoint
+                    Box(modifier = Modifier.width(Spacing.PageBase10))
+                    Text(
+                        text = switchRoleActionText,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -334,15 +372,12 @@ private fun ConnectionHeroCard(
     identifierValue: String,
     statusAccent: Color,
     onIdentifierChange: (String) -> Unit,
-    onPrimaryAction: () -> Unit,
-    onRoleSwitch: () -> Unit
+    onPrimaryAction: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(Corners.PageShape),
-        pressFeedbackType = PressFeedbackType.Sink,
-        onClick = onRoleSwitch
+            .clip(Corners.PageShape)
     ) {
         Column(
             modifier = Modifier.padding(
@@ -350,7 +385,7 @@ private fun ConnectionHeroCard(
                 vertical = Spacing.PageCardPadding
             ),
             verticalArrangement = Arrangement.spacedBy(Spacing.Medium)
-        ) {
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -369,10 +404,6 @@ private fun ConnectionHeroCard(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                StatusBadge(
-                    text = if (isHost) "点击切换到 Client" else "点击切换到 Host",
-                    tone = SurfaceTone.Primary
-                )
             }
 
             Text(
