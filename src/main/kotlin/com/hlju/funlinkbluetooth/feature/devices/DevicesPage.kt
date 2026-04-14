@@ -342,7 +342,6 @@ private fun ConnectionHeroCard(
             .fillMaxWidth()
             .clip(Corners.PageShape),
         pressFeedbackType = PressFeedbackType.Sink,
-        showIndication = true,
         onClick = onRoleSwitch
     ) {
         Column(
@@ -461,8 +460,7 @@ private fun MetricsRow(
             title = if (isHost) "已连接设备" else "附近房间",
             value = if (isHost) connectedCount.toString() else discoveredCount.toString(),
             summary = if (isHost) "实时连接数量" else "可发现房间数",
-            accent = if (isHost && connectedCount > 0) qualityAccent else MiuixTheme.colorScheme.onSurface,
-            interactive = true
+            accent = if (isHost && connectedCount > 0) qualityAccent else MiuixTheme.colorScheme.onSurface
         )
         MetricCard(
             modifier = Modifier.weight(1f),
@@ -481,8 +479,7 @@ private fun MetricsRow(
                 qualityAccent
             } else {
                 MiuixTheme.colorScheme.onSurface
-            },
-            interactive = true
+            }
         )
     }
 }
@@ -493,15 +490,12 @@ private fun MetricCard(
     value: String,
     summary: String,
     accent: Color,
-    modifier: Modifier = Modifier,
-    interactive: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .clip(Corners.PageShape),
-        pressFeedbackType = if (interactive) PressFeedbackType.Tilt else PressFeedbackType.None,
-        showIndication = interactive,
-        onClick = if (interactive) ({}) else null
+        pressFeedbackType = PressFeedbackType.Tilt
     ) {
         Column(
             modifier = Modifier.padding(
