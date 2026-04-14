@@ -68,10 +68,14 @@ class DevicesController(
     }
 
     fun startHostBroadcast() {
+        if (pendingStartHost || sessionController.state.value.isStartingAdvertising) return
         val normalized = roomNameInput.trim()
         roomNameInput = normalized
         settingsRepository.setHostRoomName(normalized)
-        if (normalized.isBlank()) return
+        if (normalized.isBlank()) {
+            sessionController.onValidationError("请输入房间标识")
+            return
+        }
         if (hasPermissions) {
             doStartHostBroadcast()
         } else {
@@ -85,6 +89,7 @@ class DevicesController(
     }
 
     fun startClientScan() {
+        if (pendingStartScan || sessionController.state.value.isStartingDiscovery) return
         val normalized = clientNameInput.trim()
         clientNameInput = normalized
         settingsRepository.setClientConnectionName(normalized)

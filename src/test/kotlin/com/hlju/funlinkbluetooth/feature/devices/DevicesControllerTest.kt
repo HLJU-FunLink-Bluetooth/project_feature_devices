@@ -9,6 +9,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,6 +22,7 @@ class DevicesControllerTest {
     private lateinit var context: Context
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var sessionController: NearbySessionController
+    private lateinit var stateFlow: MutableStateFlow<NearbySessionState>
 
     @Before
     fun setUp() {
@@ -32,7 +34,8 @@ class DevicesControllerTest {
         settingsRepository = SettingsRepository(context)
 
         sessionController = mockk(relaxed = true)
-        every { sessionController.state } returns MutableStateFlow(NearbySessionState())
+        stateFlow = MutableStateFlow(NearbySessionState())
+        every { sessionController.state } returns stateFlow
     }
 
     @Test
@@ -72,6 +75,66 @@ class DevicesControllerTest {
         assertEquals("room-a", settingsRepository.getHostRoomName())
         assertEquals("client-a", settingsRepository.getClientConnectionName())
         verify { sessionController.startAdvertising("room-a") }
+        verify { sessionController.startDiscovery() }
+    }
+
+    @Test
+    fun startHostBroadcast_blankRoomName_reportsValidationError() {
+        val controller = DevicesController(sessionController, settingsRepository)
+        controller.onPermissionsResult(true)
+        controller.updateRoomName("   ")
+
+        controller.startHostBroadcast()
+
+        verify { sessionController.onValidationError("请输入房间标识") }
+        verify(exactly = 0) { sessionController.startAdvertising(any()) }
+    }
+
+    @Test
+    fun startHostBroadcast_whileAdvertisingStartPending_ignoresRepeatedClick() {
+        stateFlow.value = NearbySessionState(isStartingAdvertising = true)
+        val controller = DevicesController(sessionController, settingsRepository)
+        controller.onPermissionsResult(true)
+        controller.updateRoomName("room-a")
+
+        controller.startHostBroadcast()
+
+        verify(exactly = 0) { sessionController.startAdvertising(any()) }
+    }
+
+    @Test
+    fun startClientScan_whileDiscoveryStartPending_ignoresRepeatedClick() {
+        stateFlow.value = NearbySessionState(isStartingDiscovery = true)
+        val controller = DevicesController(sessionController, settingsRepository)
+        controller.onPermissionsResult(true)
+        controller.updateClientName("client-a")
+
+        controller.startClientScan()
+
+        verify(exactly = 0) { sessionController.startDiscovery() }
+    }
+
+    @Test
+    fun deniedPermissions_clearPendingFlags_andAllowNextStart() {
+        val controller = DevicesController(sessionController, settingsRepository)
+        controller.updateRoomName("room-a")
+        controller.updateClientName("client-a")
+
+        controller.startHostBroadcast()
+        controller.onPermissionsResult(false)
+        assertFalse(controller.pendingStartHost)
+
+        controller.onPermissionsResult(true)
+        controller.startHostBroadcast()
+        verify { sessionController.startAdvertising("room-a") }
+
+        controller.onPermissionsResult(false)
+        controller.startClientScan()
+        controller.onPermissionsResult(false)
+        assertFalse(controller.pendingStartScan)
+
+        controller.onPermissionsResult(true)
+        controller.startClientScan()
         verify { sessionController.startDiscovery() }
     }
 }

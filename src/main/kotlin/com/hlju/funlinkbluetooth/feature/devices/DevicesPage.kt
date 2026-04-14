@@ -1,7 +1,6 @@
 package com.hlju.funlinkbluetooth.feature.devices
 
 import android.Manifest
-import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -28,9 +27,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,7 +80,7 @@ fun DevicesPage(
     val state by controller.state.collectAsState()
     val isAdvertising = state.isAdvertising
     val isHost = state.role == ConnectionRole.HOST
-    val isRefreshing = state.status == ConnectionStatus.DISCOVERING
+    val isDiscovering = state.isDiscovering
     val connectedList = state.connectedEndpoints.toList().sortedBy { it.endpointName.lowercase() }
     val connectedById = connectedList.associateBy { it.endpointId }
     val discoveredList = state.discoveredEndpoints
@@ -105,8 +102,6 @@ fun DevicesPage(
         label = "qualityAccent"
     )
 
-    var lastHostToggleAtMs by remember { mutableLongStateOf(0L) }
-    val hostToggleDebounceMs = 900L
     val requiredPermissions = remember {
         arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -140,8 +135,14 @@ fun DevicesPage(
     val primaryActionText = when {
         isHost && isAdvertising -> "停止广播"
         isHost -> "开始广播"
-        isRefreshing -> "停止扫描"
+        isDiscovering -> "停止扫描"
         else -> "开始扫描"
+    }
+    val primaryActionEnabled = when {
+        isHost && isAdvertising -> true
+        isHost -> !state.isStartingAdvertising && !controller.pendingStartHost
+        isDiscovering -> true
+        else -> !state.isStartingDiscovery && !controller.pendingStartScan
     }
 
     PageScaffold(
@@ -180,6 +181,7 @@ fun DevicesPage(
                             connectedRoomName = connectedRoomName
                         ),
                         primaryActionText = primaryActionText,
+                        primaryActionEnabled = primaryActionEnabled,
                         connectedCount = connectedList.size,
                         discoveredCount = discoveredCount,
                         pendingCount = pendingCount,
@@ -192,9 +194,6 @@ fun DevicesPage(
                         },
                         onPrimaryAction = {
                             if (isHost) {
-                                val now = SystemClock.elapsedRealtime()
-                                if (now - lastHostToggleAtMs < hostToggleDebounceMs) return@ConnectionHeroCard
-                                lastHostToggleAtMs = now
                                 if (isAdvertising) {
                                     controller.stopHostBroadcast()
                                 } else {
@@ -202,7 +201,7 @@ fun DevicesPage(
                                     if (controller.pendingStartHost) permissionLauncher.launch(requiredPermissions)
                                 }
                             } else {
-                                if (isRefreshing) {
+                                if (isDiscovering) {
                                     controller.stopClientScan()
                                 } else {
                                     controller.startClientScan()
@@ -238,7 +237,7 @@ fun DevicesPage(
                     } else {
                         SectionTitle(
                             title = "附近房间",
-                            summary = if (isRefreshing) {
+                            summary = if (isDiscovering) {
                                 "正在搜索附近可加入的房间。"
                             } else {
                                 "开始扫描后，可从这里发起连接。"
@@ -256,7 +255,7 @@ fun DevicesPage(
                     } else {
                         DiscoveredEndpointsCard(
                             discoveredList = discoveredList,
-                            isRefreshing = isRefreshing,
+                            isRefreshing = isDiscovering,
                             onConnect = controller::requestConnectionToEndpoint
                         )
                     }
@@ -355,6 +354,7 @@ private fun ConnectionHeroCard(
     status: ConnectionStatus,
     summary: String,
     primaryActionText: String,
+    primaryActionEnabled: Boolean,
     connectedCount: Int,
     discoveredCount: Int,
     pendingCount: Int,
@@ -454,6 +454,7 @@ private fun ConnectionHeroCard(
 
             Button(
                 onClick = onPrimaryAction,
+                enabled = primaryActionEnabled,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColorsPrimary()
             ) {
