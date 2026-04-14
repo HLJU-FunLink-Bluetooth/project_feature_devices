@@ -271,7 +271,6 @@ fun DevicesPage(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = fabEndPadding, bottom = fabBottomPadding),
-                shape = Corners.PageShape
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = Spacing.ExtraLarge),
