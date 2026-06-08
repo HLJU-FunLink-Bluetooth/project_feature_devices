@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,7 +38,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,10 +49,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.hlju.funlinkbluetooth.core.designsystem.navigation.PageScaffold
-import com.hlju.funlinkbluetooth.core.designsystem.theme.miSansTextStyles
-import com.hlju.funlinkbluetooth.core.designsystem.token.Corners
 import com.hlju.funlinkbluetooth.core.designsystem.token.Spacing
 import com.hlju.funlinkbluetooth.core.designsystem.token.adaptivePageHorizontalPadding
+import com.hlju.funlinkbluetooth.core.designsystem.token.clipNestedShape
+import com.hlju.funlinkbluetooth.core.designsystem.token.clipPageShape
 import com.hlju.funlinkbluetooth.core.designsystem.widget.SectionTitle
 import com.hlju.funlinkbluetooth.core.designsystem.widget.StateMessageCard
 import com.hlju.funlinkbluetooth.core.designsystem.widget.StatusBadge
@@ -84,8 +82,6 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Scan
 import top.yukonga.miuix.kmp.icon.extended.SearchDevice
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.darkColorScheme
-import top.yukonga.miuix.kmp.theme.lightColorScheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -234,7 +230,7 @@ fun DevicesPage(
     ) { innerPadding, contentModifier ->
         DevicesPageContent(
             content = contentSnapshot,
-            contentModifier = contentModifier,
+            modifier = contentModifier,
             contentPadding = PaddingValues(
                 start = pageHorizontalPadding,
                 top = innerPadding.calculateTopPadding() + Spacing.PageSectionGap,
@@ -270,7 +266,6 @@ fun DevicesPage(
         val acceptTarget = state.pendingConnections.firstOrNull()
         ConfirmationDialog(
             show = acceptTarget != null,
-            title = "确认接受连接",
             summary = if (acceptTarget != null) {
                 "是否接受来自 ${acceptTarget.endpointName} 的连接请求？"
             } else {
@@ -281,15 +276,13 @@ fun DevicesPage(
                 controller.rejectIncomingConnection(endpointId)
             },
         ) {
-            DialogActionRow(
-                cancelText = "取消",
-                confirmText = "接受连接",
+            AcceptConnectionDialogActionRow(
                 onCancel = {
-                    val endpointId = acceptTarget?.endpointId ?: return@DialogActionRow
+                    val endpointId = acceptTarget?.endpointId ?: return@AcceptConnectionDialogActionRow
                     controller.rejectIncomingConnection(endpointId)
                 },
                 onConfirm = {
-                    val endpointId = acceptTarget?.endpointId ?: return@DialogActionRow
+                    val endpointId = acceptTarget?.endpointId ?: return@AcceptConnectionDialogActionRow
                     controller.acceptIncomingConnection(endpointId)
                 }
             )
@@ -301,7 +294,7 @@ fun DevicesPage(
 @Composable
 private fun DevicesPageContent(
     content: DevicesContentSnapshot,
-    contentModifier: Modifier,
+    modifier: Modifier,
     contentPadding: PaddingValues,
     scrollBehavior: ScrollBehavior?,
     statusAccent: Color,
@@ -313,7 +306,7 @@ private fun DevicesPageContent(
     onConnect: (String) -> Unit
 ) {
     LazyColumn(
-        modifier = contentModifier
+        modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight()
             .scrollEndHaptic()
@@ -449,7 +442,6 @@ private fun DevicesModeContent(
         ConnectionModeCard(
             content = content,
             actionsEnabled = actionsEnabled,
-            statusAccent = statusAccent,
             onRoomNameChange = onRoomNameChange,
             onClientNameChange = onClientNameChange,
             onPrimaryAction = onPrimaryAction
@@ -484,7 +476,6 @@ private fun DevicesModeContent(
 private fun ConnectionModeCard(
     content: DevicesContentSnapshot,
     actionsEnabled: Boolean,
-    statusAccent: Color,
     onRoomNameChange: (String) -> Unit,
     onClientNameChange: (String) -> Unit,
     onPrimaryAction: () -> Unit
@@ -495,7 +486,7 @@ private fun ConnectionModeCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(Corners.PageShape),
+            .clipPageShape(),
         insideMargin = PaddingValues(Spacing.PageCardPaddingLarge)
     ) {
         Column(
@@ -574,7 +565,7 @@ private fun ModeGlyph(
     Box(
         modifier = Modifier
             .size(44.dp)
-            .clip(Corners.nestedShape())
+            .clipNestedShape()
             .background(tint.copy(alpha = 0.12f)),
         contentAlignment = Alignment.Center
     ) {
@@ -596,7 +587,7 @@ private fun ConnectionStatusStrip(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(Corners.PageShape),
+            .clipPageShape(),
         insideMargin = PaddingValues(Spacing.PageCardPaddingLarge)
     ) {
         Column(
@@ -727,7 +718,7 @@ private fun HostEndpointGroupCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(Corners.PageShape)
+            .clipPageShape()
     ) {
         Column {
             content.pendingList.forEachIndexed { index, pending ->
@@ -786,7 +777,7 @@ private fun ClientEndpointGroupCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(Corners.PageShape)
+            .clipPageShape()
     ) {
         Column {
             content.discoveredList.forEachIndexed { index, endpoint ->
@@ -876,7 +867,6 @@ private fun EndpointDivider() {
 @Composable
 private fun ConfirmationDialog(
     show: Boolean,
-    title: String,
     summary: String,
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
@@ -887,14 +877,14 @@ private fun ConfirmationDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(Corners.PageShape)
+                .clipPageShape()
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = Spacing.ExtraLarge, vertical = Spacing.LargePlus),
                 verticalArrangement = Arrangement.spacedBy(Spacing.PageBase10),
             ) {
                 Text(
-                    text = title,
+                    text = "确认接受连接",
                     style = MiuixTheme.textStyles.title3,
                     color = MiuixTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
@@ -911,12 +901,9 @@ private fun ConfirmationDialog(
 }
 
 @Composable
-private fun DialogActionRow(
-    cancelText: String,
-    confirmText: String,
+private fun AcceptConnectionDialogActionRow(
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
-    destructiveConfirm: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -925,21 +912,13 @@ private fun DialogActionRow(
         horizontalArrangement = Arrangement.spacedBy(Spacing.Medium),
     ) {
         TextButton(
-            text = cancelText,
+            text = "取消",
             modifier = Modifier.weight(1f),
             onClick = onCancel,
         )
         TextButton(
-            text = confirmText,
+            text = "接受连接",
             modifier = Modifier.weight(1f),
-            colors = if (destructiveConfirm) {
-                ButtonDefaults.textButtonColors(
-                    color = MiuixTheme.colorScheme.errorContainer,
-                    textColor = MiuixTheme.colorScheme.error,
-                )
-            } else {
-                ButtonDefaults.textButtonColors()
-            },
             onClick = onConfirm,
         )
     }
@@ -1007,78 +986,4 @@ private fun statusSummary(
     connectedRoomName.isNotBlank() -> "已连接到房间 $connectedRoomName，可直接进入插件联调。"
     status == ConnectionStatus.DISCOVERING -> "正在搜索附近房间，发现后即可点击加入。"
     else -> "填写连接标识后即可开始扫描。"
-}
-
-private fun previewSnapshot(
-    role: ConnectionRole,
-    status: ConnectionStatus,
-    connectedList: List<NearbyEndpointInfo> = emptyList(),
-    discoveredList: List<NearbyEndpointInfo> = emptyList(),
-    pendingList: List<PendingConnectionInfo> = emptyList(),
-    endpointBandwidth: Map<String, Int> = emptyMap(),
-    roomName: String = "HLJU Lab",
-    clientName: String = "cyzi7-phone",
-    lastError: String? = null
-): DevicesContentSnapshot {
-    val connectedRoomName = connectedList.firstOrNull()?.endpointName.orEmpty()
-    val bestLinkQuality = endpointBandwidth.values.minOfOrNull { it } ?: -1
-    val isHost = role == ConnectionRole.HOST
-    return DevicesContentSnapshot(
-        role = role,
-        status = status,
-        isAdvertising = status == ConnectionStatus.ADVERTISING,
-        isDiscovering = status == ConnectionStatus.DISCOVERING,
-        connectedList = connectedList,
-        discoveredList = discoveredList,
-        pendingList = pendingList,
-        endpointBandwidth = endpointBandwidth,
-        connectedRoomName = connectedRoomName,
-        connectedCount = connectedList.size,
-        discoveredCount = discoveredList.size,
-        pendingCount = pendingList.size,
-        bestLinkQuality = bestLinkQuality,
-        lastError = lastError,
-        roomNameValue = roomName,
-        clientNameValue = clientName,
-        summary = statusSummary(
-            status = status,
-            isHost = isHost,
-            isAdvert = status == ConnectionStatus.ADVERTISING,
-            roomName = roomName,
-            connectedRoomName = connectedRoomName
-        ),
-        primaryActionText = primaryActionTextForRole(
-            role = role,
-            isAdvertising = status == ConnectionStatus.ADVERTISING,
-            isDiscovering = status == ConnectionStatus.DISCOVERING
-        ),
-        primaryActionEnabled = true
-    )
-}
-
-@Composable
-private fun DevicesPreviewSurface(
-    content: DevicesContentSnapshot,
-    dark: Boolean = false
-) {
-    MiuixTheme(
-        colors = if (dark) darkColorScheme() else lightColorScheme(),
-        textStyles = miSansTextStyles()
-    ) {
-        DevicesPageContent(
-            content = content,
-            contentModifier = Modifier
-                .fillMaxSize()
-                .background(MiuixTheme.colorScheme.background),
-            contentPadding = PaddingValues(Spacing.PageOuterInset),
-            scrollBehavior = null,
-            statusAccent = statusColor(content.status),
-            qualityAccent = qualityColor(content.bestLinkQuality),
-            actionsEnabled = true,
-            onRoomNameChange = {},
-            onClientNameChange = {},
-            onPrimaryAction = {},
-            onConnect = {}
-        )
-    }
 }
